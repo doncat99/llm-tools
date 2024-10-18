@@ -1,0 +1,12 @@
+# base
+git+https://github.com/doncat99/llm-tools
+
+# claude
+llama-cpp-python
+huggingface-hub
+rich
+langchain-anthropic >= 0.1.19
+
+# openai
+bitsandbytes
+accelerate
