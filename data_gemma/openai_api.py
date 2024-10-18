@@ -25,69 +25,71 @@ from data_gemma import base
 
 
 class OpenAI(base.LLM):
-  """Open AI API."""
+    """OpenAI API."""
 
-  def __init__(
-      self,
-      model: str,
-      api_key: str,
-      verbose: bool = True,
-      session: requests.Session | None = None,
-  ):
-    self.key = api_key
-    if not session:
-      session = requests.Session()
-    self.session: requests.Session = session
-    self.options = base.Options(verbose=verbose)
-    self.model = model
-
-  def query(self, prompt: str) -> base.LLMCall:
-    # set the params.
-    req_data = {
-        'temperature': 0.1,
-        'model': self.model,
-        'messages': [{
-            'role': 'user',
-            'content': prompt,
-        }],
-    }
-    # Make API request.
-    req = json.dumps(req_data)
-
-    start = time.time()
-    self.options.vlog(
-        f'... calling OpenAI {self.model} "{prompt[:50].strip()}..."'
-    )
-    resp = self._call_api(req)
-    t = round(time.time() - start, 3)
-    ans = ''
-    err = ''
-    if 'error' in resp:
-      err = json.dumps(resp)
-      logging.error('%s', err)
-      print(err)
-    elif (
-        'choices' in resp
-        and resp['choices']
-        and 'message' in resp['choices'][0]
-        and 'content' in resp['choices'][0]['message']
+    def __init__(
+        self,
+        model: str,
+        api_key: str,
+        base_url: str = 'https://api.openai.com/v1',  # Default base URL
+        verbose: bool = True,
+        session: requests.Session | None = None,
     ):
-      ans = resp['choices'][0]['message']['content']
-    else:
-      err = 'Got empty response'
-      logging.warning(err)
-      print(err)
+        self.key = api_key
+        self.base_url = base_url  # Store the base URL
+        if not session:
+            session = requests.Session()
+        self.session: requests.Session = session
+        self.options = base.Options(verbose=verbose)
+        self.model = model
 
-    return base.LLMCall(prompt=prompt, response=ans, duration_secs=t, error=err)
+    def query(self, prompt: str) -> base.LLMCall:
+        # Set the params.
+        req_data = {
+            'temperature': 0.1,
+            'model': self.model,
+            'messages': [{
+                'role': 'user',
+                'content': prompt,
+            }],
+        }
+        # Make API request.
+        req = json.dumps(req_data)
 
-  def _call_api(self, req_data: str) -> Any:
-    header = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {self.key}',
-    }
-    r = self.session.post(
-        'https://api.openai.com/v1/chat/completions',
-        data=req_data,
-        headers=header,
-    )
-    return r.json()
+        start = time.time()
+        self.options.vlog(
+            f'... calling OpenAI {self.model} "{prompt[:50].strip()}..."'
+        )
+        resp = self._call_api(req)
+        t = round(time.time() - start, 3)
+        ans = ''
+        err = ''
+        if 'error' in resp:
+            err = json.dumps(resp)
+            logging.error('%s', err)
+            print(err)
+        elif (
+            'choices' in resp
+            and resp['choices']
+            and 'message' in resp['choices'][0]
+            and 'content' in resp['choices'][0]['message']
+        ):
+            ans = resp['choices'][0]['message']['content']
+        else:
+            err = 'Got empty response'
+            logging.warning(err)
+            print(err)
+
+        return base.LLMCall(prompt=prompt, response=ans, duration_secs=t, error=err)
+
+    def _call_api(self, req_data: str) -> Any:
+        header = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.key}',
+        }
+        r = self.session.post(
+            f'{self.base_url}/chat/completions',  # Use the base URL here
+            data=req_data,
+            headers=header,
+        )
+        return r.json()
